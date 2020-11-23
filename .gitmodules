@@ -1,0 +1,3 @@
+[submodule "LaTeX-Classes"]
+	path = LaTeX-Classes
+	url = ssh://git@github.com/nhedges/LaTeX-Classes.git
