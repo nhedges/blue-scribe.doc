@@ -12,17 +12,68 @@
 \maketitle
 
 \section*{Introduction}
+For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver.
+To do this, we implemented code to scan an image file and break the image down into motor and laser instructions.
+Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller
+uses the UART to receive and parse the instructions so they can be turned into motor and laser commands. The result
+is a fully functional laser engraver.
+
 \section*{Scope}
+This document discusses the design overview, design details, and testing methods for our laser engraver.
+
 \section*{Design Overview}
+\subsection{Requirements}
+Our laser engraver shall meet the following functionality requirements:
+\begin{itemize}
+	\item The laser engraver shall be able to etch at least a 100 mm by 100 mm square.
+	\item The laser and x-y actuators shall be mounted within their own secure housing.
+	\item The laser shall be securely attached to the x-y actuators.
+	\item The laser brightness shall be changed for different instruction purposes.
+	\item The laser location shall be able to return a home position with a single instruction.
+	\item The microcontroller shall be able to communicate serially with the PC via USB.
+	\item The program for turning images into microcontroller instructions shall ????*****
+	\item The microcontroller shall be able to receive instructions manually through a terminal on the PC.
+	\item The microcontroller shall be able to receive instructions automatically from the image breakdown program.
+	\item The microcontroller shall be able to send a response flag via the UART back to the PC upon instruction completion.
+	\item The microcontroller shall be able to send an error flag via the UART back to the PC upon invalid instruction.
+	
+\end{itemize}
+\subsection{Dependencies}
+\subsection{Theory of Operation}
+\subsection{Design Alternatives}
+
+
 \section*{Design Details}
+
+
 \section*{Testing}
+\subsection{Size Test}
+\subsection{Motor Functionality Test}
+\subsection{Homing Test}
+\subsection{Laser PWM Test}
+\subsection{USB UART Communication Test}
+\subsection{Image Instruction Breakdown Test}
+\subsection{Manual Instruction Input Test}
+\subsection{Computer Generate Input Test}
+
 \section*{Conclusion}
 
-% \begin{figure}[H]
-%   \begin{center}
-%     \includegraphics[width=0.6\textwidth]{blocks}
-%     \caption{Top level design for the flow of interrupts and timers.}
-%     \label{fig:blocks}
-%   \end{center}
-% \end{figure}
+
+\section*{Appendices}
+\subsection{Figures}
+ \begin{figure}[H]
+   \begin{center}
+     \includegraphics[width=0.6\textwidth]{blocks}
+     \caption{Top level design for the flow of states of our laser engraver}
+     \label{fig:blockdiagram}
+   \end{center}
+ \end{figure}
+
+\begin{figure}[H]
+	   \begin{center}
+	     \includegraphics[width=0.6\textwidth]{blocks}
+	     \caption{Top level design for the flow of interrupts and timers.}
+	     \label{fig:mcwiringdiagram}
+	   \end{center}
+	 \end{figure}
 \end{document}
