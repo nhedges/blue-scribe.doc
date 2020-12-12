@@ -169,9 +169,33 @@ state variables. Once everything is ready, the state is set to idling.
 When data arrives through the UART interface, an interrupt is called by the hardware, and the
 input is copied into a buffer. When a carriage return is received, indicating the end of a command,
 the buffer is processed to read the name of the command and any included arguments.
-%TODO continue with this narrative
+
+The state machine and paramaters such as the x and y destination coordinates are set.
+The sysTick timer, which is always running, checks the state variables to determine what it should
+do each time. For example, if it sees that the current state is GoTo, it should compare the current
+motor locations and destinations to determine if the command is complete. Otherwise it should
+determine which direction the motors need to move, and set the direction pin while toggling
+the step pin on the motors as needed.
+
+%TODO continue narrative
+
+ \begin{figure}[H]
+   \begin{center}
+     \includegraphics[width=0.6\textwidth]{blockdiagram}
+     \caption{Top level design for the flow of states of our laser engraver}
+     \label{fig:blockdiagram}
+   \end{center}
+ \end{figure}
 
 \subsection{Electrical Hardware}
+
+\begin{figure}[H]
+	   \begin{center}
+	     \includegraphics[width=0.6\textwidth]{mcwiringdiagram}
+	     \caption{Top level design for the flow of interrupts and timers.}
+	     \label{fig:mcwiringdiagram}
+	   \end{center}
+	 \end{figure}
 
 \subsection{Mechanical and Wiring}
 
@@ -198,7 +222,15 @@ The image instruction breakdown test was performed early on in development on th
 configuring the software to print out
 any generated commands to the terminal instead of sending them into the serial device.
 Test images colud be loaded and compared to the output, to make sure that they were being
-analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example images. %TODO include images
+analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example images that were used.
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.4\textwidth]{test3}
+    \includegraphics[width=0.4\textwidth]{test4}
+    \caption{Some images used to test the image breakdown}
+    \label{fig:test-images}
+  \end{center}
+\end{figure}
 
 \subsection{Manual Instruction Input Test}
 The manual instruction input test was performed by connecting the microcontroller to a PC via a mini USB and connecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTy terminal to ensure the microcontroller was receiving the commands and implementing the function calls correctly. We sent the following instructions: GO 5000, 5000; HM; GO 1000, 1000; BH 1000, 500; BV 1000, 500; GO 2000, 2000; SQ 1000, 500; and HM. We observed the actuators and the laser working as expected for each function call and also observed the done flag being sent back to the terminal on each successful instruction completion. This test verified the microcontroller can receive instructions manually through a terminal on the PC.
@@ -235,32 +267,43 @@ relatively fast review and versioning of the code.
 The end result is fairly impressive; a fully functioning system which meets all the requirements
 and etches an image into wood or other materials.
 The images seem to turn out OK. An example is shown in Figure \ref{fig:troll-print}.
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.4\textwidth]{trollface-edges}
+    \includegraphics[width=0.4\textwidth]{trollface-result}
+    \caption{The prepared input file and result in wood of an old internet meme}
+    \label{fig:troll-print}
+  \end{center}
+\end{figure}
 
 In Figure \ref{fig:burn-zoomed} we can see the way that the individual cuts were executed to
-create the image. One thing that would be nice is if the mapping of the image was done differently.
+create the image.
+Each numbered scale mark is one millimeter.
+One thing that would be nice is if the mapping of the image was done differently.
 This method requires lots of left and right scanning, which results in the rough, pixely edges
 and the print taking a long time to execute- about an hour for a fairly small image.
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{burn-zoomed}
+    \caption{Microscope image of trollface print}
+    \label{fig:burn-zoomed}
+  \end{center}
+\end{figure}
 
-A slight discrepancy was noticed in one case, which was corrected in software.
-(Figure \ref{fig:off-by-one}).
-Once this was complete we could confidently test a larger image to check for overall quality.
-(Figure \ref{fig:trollface}).
+A slight discrepancy was noticed in some instancas, which were corrected in software.
+In Figure \ref{fig:off-by-one} there can be seen a case where the burns would alternate
+locations slighly when the direction was changed, and a case where the pixels were
+spread too far apart.
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.4\textwidth]{test4}
+    \includegraphics[width=0.4\textwidth]{burn-errors}
+    \caption{The prepared input file and some erroneous outputs}
+    \label{fig:off-by-one}
+  \end{center}
+\end{figure}
 
 \section*{Appendices}
 \subsection{Figures}
- \begin{figure}[H]
-   \begin{center}
-     \includegraphics[width=0.6\textwidth]{blockdiagram}
-     \caption{Top level design for the flow of states of our laser engraver}
-     \label{fig:blockdiagram}
-   \end{center}
- \end{figure}
 
-\begin{figure}[H]
-	   \begin{center}
-	     \includegraphics[width=0.6\textwidth]{mcwiringdiagram}
-	     \caption{Top level design for the flow of interrupts and timers.}
-	     \label{fig:mcwiringdiagram}
-	   \end{center}
-	 \end{figure}
 \end{document}
