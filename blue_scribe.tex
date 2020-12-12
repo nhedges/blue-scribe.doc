@@ -12,17 +12,100 @@
 \maketitle
 
 \section*{Introduction}
+For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we implemented code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
+
 \section*{Scope}
+This document discusses the design overview, design details, and testing methods for our laser engraver. Add more to this but im not sure what to say
+
 \section*{Design Overview}
+This section covers an overview of our laser engraver design. This section will discuss the required functionality, the required components for building, the theory of operation, and the potential design alternatives. 
+\subsection{Requirements}
+Our laser engraver shall meet the following functionality requirements:
+\begin{itemize}
+	\item The laser engraver shall be able to etch at least a 100 mm by 100 mm square.
+	\item The laser and x-y actuators shall be mounted within their own secure housing.
+	\item The laser shall be securely attached to the x-y actuators.
+	\item The laser brightness shall be changed for different instruction purposes.
+	\item The laser location shall be able to return a home position with a single instruction.
+	\item The microcontroller shall be able to communicate serially with the PC via USB.
+	\item The program for turning images into function commands shall ????***** I don't know how to word this 
+	\item The microcontroller shall be able to receive instructions manually through a terminal on the PC.
+	\item The microcontroller shall be able to receive instructions automatically from the PC via the image breakdown program. *****
+	\item The microcontroller shall be able to send a response flag via the UART back to the PC upon instruction completion.
+	\item The microcontroller shall be able to send an error flag via the UART back to the PC upon invalid instruction.
+	
+\end{itemize}
+\subsection{Dependencies}
+The following components are required to build the complete laser engraver design:
+\begin{itemize}
+	\item STM Microcontroller find exact product number
+	\item (2) X-Y linear actuators
+	\item (2) Bipolar stepper motor drivers
+	\item PC
+	\item Mini USB cable
+	\item 12V power supply
+	\item Blue Laser get exact specs
+	\item Laser driver
+	\item Wood for Laser Engraver Housing Do we want to include these
+	\item screws and stuff
+	\item resistors
+	\end{itemize}
+\subsection{Theory of Operation}
+
+\subsection{Design Alternatives}
+Cheaper option
+More expensive option
+
 \section*{Design Details}
+
 \section*{Testing}
+This section will go over the tests performed on our laser engraver to ensure it meets all of the functionality requirements. 
+
+\subsection{Structure Test}
+To begin the structure test, we visually examined the structure for any building imperfections and to ensure proper functionality could be achieved. Next, we used our hands to provide pressure on multiple sides of the housing to test for building security. From there we put light pressure on the x-y linear actuators to ensure they were securely fastened. Finally, we used a ruler to measure the size of the engraving area to ensure the size was large enough. From this test, we did not notice any visual design flaws and the structure seemed to be very sturdy. The etching area was determined to be X mm by X mm in size. This test was able to verify our laser engraver could etch a minimum of an 100 mm by 100 mm area, the housing for the laser and the motors were secure, and the laser and motors themselves were securely fastened.
+
+\subsection{Motor Functionality Test}
+This motor functionality test was performed by hard coding and running motor move commands from the microcontroller and observing the movement of the actuators afterward. We started by implementing move commands for each individual actuator to get them to move to the ends of their respective ranges. Following this, we implemented simultaneous move commands so both actuators would be moving at the same time. This test was performed to ensure the laser could be moved to any location within the etching area. We found that the actuators were able to move properly verified they could move at the same time. 
+
+\subsection{Homing Test}
+The homing test was conducted by hard coding and running move commands from the microcontroller to get the actuators to be in two non-zero locations. Next, a home command was hard coded and run to verify the laser would return to the 0,0 position. We observed that actuators went to the given location and were able to return back to the starting location via the home command. This test verified that the actuators can return to a home position with a single command.  
+
+\subsection{Laser PWM Test}
+The laser PWM test was performed by hard coding values into the microcontroller's timer one capture and control register to vary the PWM output for the laser. The values tested were from 99 to 999 in 100 unit increments. Once the value was loaded into the register, we would turn on the laser to observed its brightness. We observed that each value loaded into the capture and compare register adjusted the power level our laser outputted from a 90\% duty cycle down to a .1\% duty cycle. This test was able to verify our laser brightness can be changed for different instruction purposes.
+ 
+\subsection{USB UART Communication Test}
+The USB UART communication test was performed by connecting the microcontroller to a PC via a mini USB and disconnecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTY terminal to ensure the microcontroller was receiving the commands and sending the proper response flag back to the terminal. We observed that all valid function calls were returned with the proper done flag and all invalid inputs were returned with the proper error flag. This test verified the microcontroller can communicate serially with the PC via USB and can send a done or error flag via the UART back to the PC upon instruction completion or failure.
+
+\subsection{Image Instruction Breakdown Test} Nick talk about this one because idk how to word it
+The image instruction breakdown test was performed on the PC by . This test verified our program can accurately turn images into valid function commands. 
+
+\subsection{Manual Instruction Input Test}
+The manual instruction input test was performed by connecting the microcontroller to a PC via a mini USB and connecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTy terminal to ensure the microcontroller was receiving the commands and implementing the function calls correctly. We sent the following instructions: GO 5000, 5000; HM; GO 1000, 1000; BH 1000, 500; BV 1000, 500; GO 2000, 2000; SQ 1000, 500; and HM. We observed the actuators and the laser working as expected for each function call and also observed the done flag being sent back to the terminal on each successful instruction completion. This test verified the microcontroller can receive instructions manually through a terminal on the PC.
+
+\subsection{Computer Generate Input Test} Nick talk about how the instructions were sent.
+The manual instruction input test was performed by connecting the microcontroller to a PC via a mini USB and connecting the laser and both actuators pins. Once connected, . This test verified the microcontroller can receive instructions automatically from the PC via the ***** program.
+
+\subsection{Individual Function Test} I don't know if we wanna do this one.
+The individual function test was performed by connecting the microcontroller to the laser and actuators and hard coding and running all of the different commands.  
+
 \section*{Conclusion}
 
-% \begin{figure}[H]
-%   \begin{center}
-%     \includegraphics[width=0.6\textwidth]{blocks}
-%     \caption{Top level design for the flow of interrupts and timers.}
-%     \label{fig:blocks}
-%   \end{center}
-% \end{figure}
+
+\section*{Appendices}
+\subsection{Figures}
+ \begin{figure}[H]
+   \begin{center}
+     \includegraphics[width=0.6\textwidth]{blocks}
+     \caption{Top level design for the flow of states of our laser engraver}
+     \label{fig:blockdiagram}
+   \end{center}
+ \end{figure}
+
+\begin{figure}[H]
+	   \begin{center}
+	     \includegraphics[width=0.6\textwidth]{blocks}
+	     \caption{Top level design for the flow of interrupts and timers.}
+	     \label{fig:mcwiringdiagram}
+	   \end{center}
+	 \end{figure}
 \end{document}
