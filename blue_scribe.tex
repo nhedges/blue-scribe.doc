@@ -12,11 +12,11 @@
 \maketitle
 
 \section{Introduction}
-For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we implemented code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
+For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we developed code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
 
 \section{Scope}
-This document presents an overview as well as precise details of the design,
-and discusses the methods and results of functional tests.
+This document presents an overview and precise details of the laser engraver design,
+as well as the methods and results of functional tests.
 This document focuses primarily on microcontroller and software topics,
 omitting some details in electrical and mechanical design to save space.
 
@@ -24,7 +24,7 @@ omitting some details in electrical and mechanical design to save space.
 This section covers an overview of our laser engraver design. This section will discuss the required functionality, the required components for building, the theory of operation, and the potential design alternatives. 
 \subsection{Requirements}
 Our laser engraver shall meet the following functionality requirements:
-\subsection{Hardware}
+\subsubsection*{Hardware}
 	\begin{itemize}
 		\item The laser engraver shall etch at least a 80 mm by 80 mm square.
 		\item The laser and x-y actuators shall be mounted within their own secure housing.
@@ -33,7 +33,7 @@ Our laser engraver shall meet the following functionality requirements:
 		\item The microcontroller shall communicate serially with the PC via USB.
 	\end{itemize}
 
-\subsection{Software}
+\subsubsection*{Software}
 	\begin{itemize}
 		\item The laser location shall return to a home position with a single instruction.
 		\item The PC software shall process image files to determine the necessary laser commands to create an image similar to that found in the image file.
@@ -68,31 +68,30 @@ The following components are required to build the complete laser engraver desig
 The laser engraver operates on a number of principles to meet the end goal of
 translating an image file on a computer to an image etched into wood or another material.
 
-The PC has the responsibility of opening the image file, and based on the contents
-producing a list of commands, which it then sends to the microcontroller though the
-UART serial over USB connection. It waits for a response indicating the command is complete
+The PC has the responsibility of opening the image file and producing a list of commands to send to the microcontroller through the
+USB connection. Once sent, the PC waits for a response indicating the command is complete
 before sending the next one in the queue.
 
-The microcontroller receives commands through UART, and parses the information for
-what kind of command it is, as well as the parameters.
+The microcontroller receives the commands through UART and parses the information to determine
+what kind of command it is.  Once the command is determined, the parameters of the input are passed to the correct function.
 These commands can be set by the software, or alternatively entered manually by the user
 into a serial terminal software such as PuTTY.
 
-The commands are:
+The following are the laser engraver commands:
 \begin{itemize}
   \item Home (no parameters)
 
-    This command moves the motors towards the top left hand corner until the homing switches
+    This command moves the actuators towards the top left hand corner until the homing switches
     are toggled, indicating that it can go no further.
 
   \item Goto (x destination, y destination)
     
-    This command moves the motors from their current location to the x and y coordinates
-    as mapped onto the plane accessible to the motors.
+    This command moves the actuators from their current location to the x and y coordinates
+    as mapped onto the plane accessible to the actuators.
 
   \item Burn Horizontal (x destination, power output)
 
-    This command starts at where the laser is, and moves to the right or left (negative number for left)
+    This command starts at the current location and moves the laser to the right or left (negative number for left)
     while the laser is activated at a power level (between 0 and 999) specified.
 
   \item Burn Vertical (y destination, power output)
@@ -106,30 +105,30 @@ The commands are:
     mainly used for testing purposes.
 \end{itemize}
 
-The microcontroller changes a state variable and some parameter variables based on the command contents.
+The microcontroller uses state variables and parameter variables based on the command contents to determine which commands
+to run and how long it should run them.
 
-A timer causes synchronous processing of the state and parameters. Every 1 millisecond or so,
-The state variable is considered, as well as the current motor location, the target location,
+A timer causes synchronous processing of the state and parameters. Every 1 millisecond
+the state variable is checked, as well as the current motor location, the target location,
 the motor step state, the inputs from the homing switches, and any other relevant information.
-The outputs to the motor control lines are adjusted as necessary - by toggling a step pin while
+The outputs to the actuator control lines are adjusted as necessary by toggling a step pin while
 holding the corresponding direction pin high or low.
-This in general causes the motors to navigate
-to their destination, as long as the state permits it.
+This causes the motors to navigate to their destination, as long as the state permits it.
 
 If the command involved a burn, a different timer configured for Pulse Width Modulation is set
-to the proper duty cycle for the power parameter.
+to the proper duty cycle based on the power parameter.
 
 Once the command is complete, the UART sends a capital \say{A} followed by a newline
 to indicate to the user or PC software that the command is complete.
-If the command was a burn command, the laser is set to a very low duty cycle. This prevents
+If the command was a burn command, the laser is set to a very low duty cycle afterward. This prevents
 burn spots from forming while the next command is being processed.
 
-The end result of all these processes is that the image is burned onto the material.
+The end result of all these processes is that the inputted image is burned onto the material.
 
 \subsection{Design Alternatives}
 \subsubsection{Cheaper option: dual reflective mirrors}
-A cheaper alternative concept was discussed, where the laser would be fixed, and
-mirrors mounted to already acquired stepper motors would change the angle to reflect
+A cheaper alternative concept was considered that consisted of a fixed laser and
+mirrors mounted to already acquired stepper motors. The stepper motors would change the angle of the mirrors to reflect
 the laser to the desired position. This idea was abandoned because of the distortion
 that would be caused by the optical reflection and beam divergence problems.
 
@@ -170,7 +169,7 @@ When data arrives through the UART interface, an interrupt is called by the hard
 input is copied into a buffer. When a carriage return is received, indicating the end of a command,
 the buffer is processed to read the name of the command and any included arguments.
 
-The state machine and paramaters such as the x and y destination coordinates are set.
+The state machine and parameters such as the x and y destination coordinates are set.
 The sysTick timer, which is always running, checks the state variables to determine what it should
 do each time. For example, if it sees that the current state is GoTo, it should compare the current
 motor locations and destinations to determine if the command is complete. Otherwise it should
@@ -218,11 +217,9 @@ The laser PWM test was performed by hard coding values into the microcontroller'
 The USB UART communication test was performed by connecting the microcontroller to a PC via a mini USB and disconnecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTY terminal to ensure the microcontroller was receiving the commands and sending the proper response flag back to the terminal. We observed that all valid function calls were returned with the proper done flag and all invalid inputs were returned with the proper error flag. This test verified the microcontroller can communicate serially with the PC via USB and can send a done or error flag via the UART back to the PC upon instruction completion or failure.
 
 \subsection{Image Instruction Breakdown Test}
-The image instruction breakdown test was performed early on in development on the PC by
-configuring the software to print out
-any generated commands to the terminal instead of sending them into the serial device.
-Test images colud be loaded and compared to the output, to make sure that they were being
-analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example images that were used.
+The image instruction breakdown test was performed by configuring the software to print out
+generated commands to the terminal. We observed test images could be loaded and when compared to the output of the program saw they were being
+analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example images that were used. This test verified the PC software can process image files to determine the necessary laser commands to create an image similar to that found in the image file.
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=0.4\textwidth]{test3}
@@ -236,30 +233,25 @@ analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example im
 The manual instruction input test was performed by connecting the microcontroller to a PC via a mini USB and connecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTy terminal to ensure the microcontroller was receiving the commands and implementing the function calls correctly. We sent the following instructions: GO 5000, 5000; HM; GO 1000, 1000; BH 1000, 500; BV 1000, 500; GO 2000, 2000; SQ 1000, 500; and HM. We observed the actuators and the laser working as expected for each function call and also observed the done flag being sent back to the terminal on each successful instruction completion. This test verified the microcontroller can receive instructions manually through a terminal on the PC.
 
 \subsection{Computer Generated Input Test}
-The manual computer generated input test was performed late in development, as the serial connection
-with the software was one of the last components to be developed and testable.
-The laser and motors were disconnected for convenience.
-The Linux PC was connected to the microcontroller, and the software would send the commands for
+The manual computer generated input test was performed with
+the laser and motors were disconnected for convenience. This test was performed by
+connecting the Linux PC to the microcontroller and using the image breakdown software to send the commands for
 a known test image. It would skip the \say{home} command at the beginning and end since the motors
 could not move.
-When command completion acknowledgments were being consistently received, the test passed.
+We observed command completion acknowledgments were being consistently received after each instruction input.
 This test verified the microcontroller can receive instructions automatically from the PC software.
-
-\subsection{Individual Function Test} I don't know if we wanna do this one.
-The individual function test was performed by connecting the microcontroller to the laser and actuators and hard coding and running all of the different commands.  
 
 \subsection{Full Functional Test}
 The full process pipeline is tested by starting with an image file, loading it into the software,
 and burning the image using the laser and motors automatically.
-Test images were used first to verify that the image was consistently generated.
+Test images were used first to verify that the image was consistently generated. We observed the laser engraved output matched closely to the inputted image. This test verified the microcontroller can receive instructions automatically from the PC via the image breakdown program.
 
 \section{Conclusion}
-The project overall was a success. There were some problems early on getting the motors to work,
-and we realized it was impossible to use the driver circuits we already had because the motors
-had no fifth wire or center tap to the coils. Adaptations were made, which worked.
+The project overall was a success. There were some problems early on getting the actuators to work because we realized it was impossible to use the motor driver that came in our lab kits.
+The x-y actuators were bipolar motors instead of unipolar motors, so they had no fifth wire or center tap to the coils. We ended up having to buy two bipolar stepper motor drivers to get the actuators working and that turned out successful.
 
-Constructing the mechanical aspects of the device were even more tedious than we had imagined,
-but with some help and lots of time the chassis was also realized. 
+Constructing the mechanical aspects of the device was more tedious than we had imagined,
+but with some help and lots of time the chassis design was also realized. 
 
 Collaborating remotely most of the time proved a challenge, but the use of git software allowed
 relatively fast review and versioning of the code.
@@ -290,9 +282,9 @@ and the print taking a long time to execute- about an hour for a fairly small im
   \end{center}
 \end{figure}
 
-A slight discrepancy was noticed in some instancas, which were corrected in software.
+A slight discrepancy was noticed in some instances, which were corrected in software.
 In Figure \ref{fig:off-by-one} there can be seen a case where the burns would alternate
-locations slighly when the direction was changed, and a case where the pixels were
+locations slightly when the direction was changed, and a case where the pixels were
 spread too far apart.
 \begin{figure}[H]
   \begin{center}
