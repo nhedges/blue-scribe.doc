@@ -12,7 +12,7 @@
 \maketitle
 
 \section{Introduction}
-For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we developed code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
+For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we developed code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions, so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
 
 \section{Scope}
 This document presents an overview and precise details of the laser engraver design,
@@ -26,7 +26,7 @@ This section covers an overview of our laser engraver design. This section will 
 Our laser engraver shall meet the following functionality requirements:
 \subsubsection*{Hardware}
 	\begin{itemize}
-		\item The laser engraver shall etch at least a 80 mm by 80 mm square.
+		\item The laser engraver shall etch at least an 80 mm by 80 mm square.
 		\item The laser and x-y actuators shall be mounted within their own secure housing.
 		\item The laser shall be securely attached to the x-y actuators.
 		\item The laser brightness shall be changed for different instruction purposes.
@@ -45,15 +45,16 @@ Our laser engraver shall meet the following functionality requirements:
 
 \subsection{Dependencies}
 The following components are required to build the complete laser engraver design:
+\subsubsection*{Hardware}
 \begin{itemize}
-	\item STM32 Microcontroller
+	\item STM32 Discovery Board Microcontroller
 	\item PC
-	\item (2) X-Y linear actuators
+	\item (2) Bipolar stepper motor ball-screw linear actuator 100 mm
 	\item (2) MP6500 bipolar stepper motor drivers
 	\item (2) Contact switches
 	\item Mini USB cable
 	\item 12V power supply
-	\item NEJE 2.5W Laser Engraver Module Head 450nm 
+	\item NEJE 2.5W Laser Engraver Module Head 450 nm 
 	\item Included laser power board
 	\item (4) Scrap plywood for laser engraver housing
 	\item (4) Aluminum angle brackets
@@ -62,7 +63,17 @@ The following components are required to build the complete laser engraver desig
 	\item (2) 2.2 kOhm resistors
 	\item (2) Red LEDs
 	\item Jumper wires as required
-	\end{itemize}
+\end{itemize}
+
+\subsubsection*{Software}
+\begin{itemize}
+  \item Keil 5 IDE
+  \item STM32 startup code
+  \item \texttt{stdio.h} standard C library
+  \item Linux operating system for PC
+  \item OpenCV Version 4
+  \item C++ standard libraries
+\end{itemize}
 
 \subsection{Theory of Operation}
 The laser engraver operates on a number of principles to meet the end goal of
@@ -81,8 +92,9 @@ The following are the laser engraver commands:
 \begin{itemize}
   \item Home (no parameters)
 
-    This command moves the actuators towards the top left hand corner until the homing switches
+    This command moves the actuators towards the top left-hand corner until the homing switches
     are toggled, indicating that it can go no further.
+    That location is then set as a reference point in the coordinate system as zero, zero.
 
   \item Goto (x destination, y destination)
     
@@ -143,40 +155,186 @@ translating an image file on a computer to an image etched into wood or another 
 We can follow the pipeline of information to see how it works.
 
 \subsection{PC Software}
-First, the image file on the computer is opened and read by the PC software using an open source
+First, the image file on the computer is opened and read by the PC software using OpenCV, an open source
 image processing library. The dimensions of the image are analyzed, and cropped to a smaller size
 if necessary.
 The image is converted to grayscale, and a preview is displayed to the user.
 The software then scans through each pixel on the image, and builds groups of adjacent pixels
-which have the same value. It generates a list of commands as it goes and they are queued in memory.
+which have the same value. It generates a list of commands as it goes, and they are queued in memory.
+Constants representing the scaling factor between pixels and motor steps is considered, as well
+as a constant for normalizing the 256 possible values in the image to a subset of the 1000 possible
+values for the laser power level.
+If there are five pixels in a row which have the value 45, the scaling factor is 50 steps
+per pixel, and the laser power multiplier is 2, then the command would be \texttt{BH 250 90}.
 The list of commands, when executed in the right order, will tell the laser engraver how to make the image.
 
 Once the user is ready, the software sends the first command, usually a \say{home} command, to the
 microcontroller through the UART serial interface.
-It waits for a response from the microcontroller, which is an indication that the command has been
+In the linux operating system, the serial device for the ST-Link UART is \texttt{/dev/ttyACM0}.
+A standard \say{termios} struct is used to set the correct UART parameters;
+\begin{itemize}
+  \item 9600 BAUD
+  \item No parity bit
+  \item 8 bits per byte
+  \item Hardware flow control disabled
+  \item Cannon mode disabled
+  \item Echo disabled
+  \item Erasure enabled
+  \item Newline echo disabled
+  \item Handling interrupt signals disabled
+  \item Disable special handling of inputs such as carriage returns and newline conversions
+  \item Timeout of 2 deciseconds
+  \item \say{VMIN} size of 100
+\end{itemize}
+
+It waits for a response from the microcontroller containing \say{A},
+which is an indication that the command has been
 carried out and the engraver is ready for a new command.
 The second command is then sent, and the process repeats until all commands have been sent and executed.
 
 \subsection{Microcontroller Software}
 The microcontroller is key for the functionality of the overall system.
 When the microcontroller (MC) is first powered on, it initializes all the necessary inputs and outputs,
-which include pins for UART, inputs for switches, an analog output with the necessary timer,
-and two output pins for each motor.
-Additionally the sysTick timer is initialized. The overall operation of the MC is defined by some
+which include pins for UART (push-pull), inputs for switches (pull up),
+an analog output with the TIM1 timer,
+and two output pins for each motor (push-pull) (Figure \ref{fig:mcwiringdiagram}).
+Additionally, the sysTick timer is initialized. The overall operation of the MC is defined by some
 state variables. Once everything is ready, the state is set to idling.
 
 When data arrives through the UART interface, an interrupt is called by the hardware, and the
-input is copied into a buffer. When a carriage return is received, indicating the end of a command,
-the buffer is processed to read the name of the command and any included arguments.
+input is copied into a buffer and the device goes back to idling in most cases.
+If a carriage return is received, indicating the end of a command,
+the state is changed to \say{receiving}.
 
+In the main function, most of the time is spent in a busy wait checking if the state is \say{receiving}.
+When this is set by the UART handler,
+the buffer is processed to read the name of the command and any included arguments using sscanf.
+Functions are called based on the command and parameters.
 The state machine and parameters such as the x and y destination coordinates are set.
+In the goTo function (Figure \ref{fig:gotoFunction}), the state, xTarget, yTarget, xDirection,
+and yDirection are all set.
+goTo contains a busy wait which ends when sysTick changes the state.
+Most of the other command functions make one or more calls to goTo,
+four times in the case of \say{Square}, and preceeded and followed by
+commands to set the laser PWM in the case of burn commands.
+
+\begin{figure}[H]
+ \begin{center}
+   \begin{verbatim}
+void goTo(int posX, int posY){
+	motorTargetX = posX;
+	motorTargetY = posY;
+	if (motorTargetX > motorLocationX)
+		directionX = 0; // move away from zero
+	else
+		directionX = 1; // move towards zero
+	if (motorTargetY > motorLocationY)
+		directionY = 0; // move away from zero
+	else
+		directionY = 1; // move towards zero
+	state = moving;
+
+	while (state == moving); // wait until move is done
+
+	if (function == GO){ //send the done flag if goTo was the original function called
+		send(1);
+	}
+}
+   \end{verbatim}
+   \caption{Code snippet of the goTo function}
+   \label{fig:gotoFunction}
+ \end{center}
+\end{figure}
+
 The sysTick timer, which is always running, checks the state variables to determine what it should
-do each time. For example, if it sees that the current state is GoTo, it should compare the current
-motor locations and destinations to determine if the command is complete. Otherwise it should
+do each time. For example, if it sees that the current state is \say{moving}, it should compare the current
+motor locations and destinations to determine if the command is complete. Otherwise, it should
 determine which direction the motors need to move, and set the direction pin while toggling
 the step pin on the motors as needed.
+Conditions are checked each time to determine if a command is done.
+State variables are updated to move to the next state based on the outcome.
 
-%TODO continue narrative
+In causing the stepper motor to execute a step, the \say{step} pin must be set to high.
+During a move, the sysTick will toggle through a two-state system for the rising and falling
+edge of the step pin, for each motor x and y. The motor location variable
+is only incremented or decremented
+for a given motor on the falling edge motor state.
+The end result of the step output is a square wave with a frequency half that
+of the sysTick timer frequency, which stops when the motor arrives at its target value.
+A portion of the very long sysTickHandler function is shown in Figure \ref{fig:sysTick}.
+The portion for the \say{moving} state is shown. Other states will include different content
+based on the state machine behavior. The \say{homing} state, for example, would be similar
+except the direction variables are ignored, the motors always move towards zero, and input
+pins for the homing switches are checked to determine if a motor should continue.
+
+\begin{figure}[H]
+ \begin{center}
+   \begin{verbatim}
+if (state == moving)
+	{
+		if (motorLocationX != motorTargetX) //moves the horizontal motor if it is not at its destination
+		{
+		  uint32_t motorTempX = ((directionX << 3) | (xMotorStage << 2));//Gpiob pin 2 controls the stepping of the motor and pin 3 controls direction
+			GPIOB->ODR &= ~motorMaskX;
+			GPIOB->ODR |= motorTempX; //update the GPIOB ODR
+			if (xMotorStage == falling) // we update the location on falling edge
+			{
+				if (directionX == 1) // update the motor location since we moved
+				{
+					motorLocationX--;
+				}
+				else
+				{
+					motorLocationX++;
+				}
+				
+				xMotorStage = rising; //switch the motor stage to rising
+			}
+			else
+			{
+				xMotorStage = falling; //switch the motor stage to falling
+			}
+		}
+		if (motorLocationY != motorTargetY) //moves the vertical motor if it is not at its destination
+		{
+      //Gpiob pin 6 controls the stepping of the motor and pin 7 controls direction
+		  uint32_t motorTempY = ((directionY << 7) | (yMotorStage << 6));
+			GPIOB->ODR &= ~motorMaskY;
+			GPIOB->ODR |= motorTempY; //update the GPIOB ODR
+			if (yMotorStage == falling) // we update the location on falling edge
+			{
+				if (directionY == 1) // update the motor location since we moved
+				{
+					motorLocationY--;
+				}
+				else
+				{
+					motorLocationY++;
+				}
+				yMotorStage = rising; //switch the motor stage to rising
+			}
+			else
+			{
+				yMotorStage = falling; //switch the motor stage to falling
+			}
+		}
+		if (motorLocationX == motorTargetX && motorLocationY == motorTargetY)
+		{			
+			state = sending; // change state if we are done moving.
+		}
+	}
+   \end{verbatim}
+   \caption{Code snippet of one part of the sysTickHandler function}
+   \label{fig:sysTick}
+ \end{center}
+\end{figure}
+
+The overall behavior of the state machine is visualized in Figure \ref{fig:blockdiagram}.
+It is designed so that interruptions to the sysTick process is minimized during
+movement commands because they are fairly time-critical.
+If a step is delayed for too long, there is a risk of a particular spot being exposed to the
+laser for longer than intended. For this reason sending UART characters to the device while
+it is executing a burn command should be avoided when possible.
 
  \begin{figure}[H]
    \begin{center}
@@ -186,7 +344,26 @@ the step pin on the motors as needed.
    \end{center}
  \end{figure}
 
+
+
 \subsection{Electrical Hardware}
+Figure \ref{fig:mcwiringdiagram} visualizes the electrical connections utilized for the peripherals.
+All connections are routed from pins on the Discovery board to a solderless wiring board, or breadboard.
+The breadboard holds the two motor drivers, which require a 12V input and ground pair,
+assisted by a large decoupling capacitor. A 1000$\mu$F capacitor was used in this implementation.
+Aditionally, the \say{sleep} pin of the driver modules must be pulled low, and the logic ground also
+connected to MC ground. The wires connecting the coils of the motors are connected directly to the
+drivers through the breadboard. The drivers must be tuned to output the correct current
+for the stepper motors; about 500 mA. 
+Aditionally red LEDs were connected to the \say{fault} pins of the motor drivers and
+the 3.3V supply from the microcontroller. An over-current or over-temperature situation
+would pull the \say{fault} pins low, activating the LEDs.
+
+The contact switches are Normally Open, so when the motors reach their lower limits the switches
+are closed, pulling their designated pin low.
+
+The USART2 device is built in to the Discovery board, so it only needs to be interfaced using the
+microcontroller pins, its power requirements being already implemented.
 
 \begin{figure}[H]
 	   \begin{center}
@@ -198,8 +375,68 @@ the step pin on the motors as needed.
 
 \subsection{Mechanical and Wiring}
 
+The chassis design had a few goals in mind, including the ability to hold all circuit boards,
+ability to mount the laser in such a way as to allow x-y actuation,
+stability, convenience for use, and simplicity of fabrication.
+
+The linear actuators are connected together directly using machine screws. This is unconventional
+for similar devices, however the laser us well below the weight specifications, and this helped
+minimize the need for additional mechanical design. Holes had to be drilled and countersunk very
+precisely in the lower of the two actuators so that the directions of movement would be perpendicular,
+with all the screws and holes lining up exactly.
+
+A bracket was made by cutting, drilling, and bending some aluminum angle bracket, to allow the
+laser to be connected to the lower actuator, while still allowing some room for the air intake fan.
+Again, the holes needed to line up in order for the machine screws to fasten the parts together.
+
+The top actuator is fastened to ply wood using wood screws. The top piece is in turn connected
+to the side wall boards, and those in turn to the base.
+The base has a square hole in the middle, allowing the laser to shine through and be focused
+flush to the bottom surface, allowing large objects to be etched.
+
+The wood frame is a part in which some collaboration
+was utilized for design and fabrication
+with someone who has woodworking skills.
+Therefore, the wood frame is not strictly our design,
+so it could be considered a pre-built sub-assembly.
+
+Once the actuators were connected to the laser, to each other, and to the frame,
+the electrical components could be installed.
+For the most part, a double-sided foam adhesive tape was used to stick circuit boards
+to one of the side walls, facing the inside.
+This allowed wires to be run more easily to the motors and laser, while also
+providing the circuits some protection from physical damage.
+
+The homing switches were likewise secured to the motors in such a way as to
+make contact with the other actuator or laser engraver bracket when the actuator
+approaches the lower limit of its range.
+
+Finally, loose wires were secured with cable ties and sticky brackets
+to prevent them from becoming accidentally caught on something or tangled in the actuators.
+Figure \ref{fig:circuits-mechanical} shows how the electronics are secured to the frame.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.6\textwidth]{wiring-mechanical}
+    \caption{Top level design for the flow of interrupts and timers.}
+    \label{fig:circuits-mechanical}
+  \end{center}
+\end{figure}
+
+\subsection{Safety}
+The main hazards in this project stem from the laser's ability to damage eyes and start fires,
+and the linear actuators creating pinch points.
+
+To remedy these safety concerns, the 12V power connector is on the front of the device, allowing
+it to be disconnected quickly and easily in an emergency.
+
+To prevent eye damage, laser protection goggles were purchased for the operator
+and anyone observing the laser.
+The laser operates in the Class IV tier of laser radiation,
+so blue-filtering eye protection is required to prevent serious eye damage.
+
 \section{Testing}
-This section will go over the tests performed on our laser engraver to ensure it meets all of the functionality requirements. 
+This section will go over the tests performed on our laser engraver to ensure it meets the functionality requirements. 
 
 \subsection{Structure Test}
 To begin the structure test, we visually examined the structure for any building imperfections and to ensure proper functionality could be achieved. Next, we used our hands to provide pressure on multiple sides of the housing to test for building security. From there we put light pressure on the x-y linear actuators to ensure they were securely fastened. Finally, we used a ruler to measure the size of the engraving area to ensure the size was large enough. From this test, we did not notice any visual design flaws and the structure seemed to be very sturdy. The etching area was determined to be 94 mm by 94 mm in size. This test was able to verify our laser engraver could etch a minimum of an 80 mm by 80 mm area, the housing for the laser and the motors were secure, and the laser and motors themselves were securely fastened.
@@ -208,10 +445,10 @@ To begin the structure test, we visually examined the structure for any building
 This motor functionality test was performed by hard coding and running motor move commands from the microcontroller and observing the movement of the actuators afterward. We started by implementing move commands for each individual actuator to get them to move to the ends of their respective ranges. Following this, we implemented simultaneous move commands so both actuators would be moving at the same time. This test was performed to ensure the laser could be moved to any location within the etching area. We found that the actuators were able to move properly verified they could move at the same time. 
 
 \subsection{Homing Test}
-The homing test was conducted by hard coding and running move commands from the microcontroller to get the actuators to be in two non-zero locations. Next, a home command was hard coded and run to verify the laser would return to the 0,0 position. We observed that actuators went to the given location and were able to return back to the starting location via the home command. This test verified that the actuators can return to a home position with a single command.  
+The homing test was conducted by hard coding and running move commands from the microcontroller to get the actuators to be in two non-zero locations. Next, a home command was hard coded and run to verify the laser would return to the 0,0 position. We observed that actuators went to the given location and were able to return to the starting location via the home command. This test verified that the actuators can return to a home position with a single command.  
 
 \subsection{Laser PWM Test}
-The laser PWM test was performed by hard coding values into the microcontroller's timer one capture and control register to vary the PWM output for the laser. The values tested were from 99 to 999 in 100 unit increments. Once the value was loaded into the register, we would turn on the laser to observed its brightness. We observed that each value loaded into the capture and compare register adjusted the power level our laser outputted from a 90\% duty cycle down to a .1\% duty cycle. This test was able to verify our laser brightness can be changed for different instruction purposes.
+The laser PWM test was performed by hard coding values into the microcontroller's timer one capture and control register to vary the PWM output for the laser. The values tested were from 99 to 999 in 100 unit increments. Once the value was loaded into the register, we would turn on the laser to observed its brightness. We observed that each value loaded into the capture and compare register adjusted the power level our laser outputted from a 90\% duty cycle down to a 0.1\% duty cycle. This test was able to verify our laser brightness can be changed for different instruction purposes.
  
 \subsection{USB UART Communication Test}
 The USB UART communication test was performed by connecting the microcontroller to a PC via a mini USB and disconnecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTY terminal to ensure the microcontroller was receiving the commands and sending the proper response flag back to the terminal. We observed that all valid function calls were returned with the proper done flag and all invalid inputs were returned with the proper error flag. This test verified the microcontroller can communicate serially with the PC via USB and can send a done or error flag via the UART back to the PC upon instruction completion or failure.
@@ -219,7 +456,7 @@ The USB UART communication test was performed by connecting the microcontroller 
 \subsection{Image Instruction Breakdown Test}
 The image instruction breakdown test was performed by configuring the software to print out
 generated commands to the terminal. We observed test images could be loaded and when compared to the output of the program saw they were being
-analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example images that were used. This test verified the PC software can process image files to determine the necessary laser commands to create an image similar to that found in the image file.
+analyzed correctly. Figure \ref{fig:test-images} shows some example images that were used. This test verified the PC software can process image files to determine the necessary laser commands to create an image similar to that found in the image file.
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=0.4\textwidth]{test3}
@@ -248,10 +485,15 @@ Test images were used first to verify that the image was consistently generated.
 
 \section{Conclusion}
 The project overall was a success. There were some problems early on getting the actuators to work because we realized it was impossible to use the motor driver that came in our lab kits.
-The x-y actuators were bipolar motors instead of unipolar motors, so they had no fifth wire or center tap to the coils. We ended up having to buy two bipolar stepper motor drivers to get the actuators working and that turned out successful.
+The x-y actuators' bipolar motors had no fifth wire or center tap to the coils.
+The drivers we already had could pull a wire low and sink current, but not drive current.
+This allowed us to only allow current in one direction through the coils.
+We ended up having to buy two bipolar stepper motor drivers to get the actuators working and that turned out successfully.
 
 Constructing the mechanical aspects of the device was more tedious than we had imagined,
 but with some help and lots of time the chassis design was also realized. 
+It may be noted that some outside help was utilized in constructing the chassis,
+as it required some skill with access to power tools.
 
 Collaborating remotely most of the time proved a challenge, but the use of git software allowed
 relatively fast review and versioning of the code.
@@ -263,7 +505,7 @@ The images seem to turn out OK. An example is shown in Figure \ref{fig:troll-pri
   \begin{center}
     \includegraphics[width=0.4\textwidth]{trollface-edges}
     \includegraphics[width=0.4\textwidth]{trollface-result}
-    \caption{The prepared input file and result in wood of an old internet meme}
+    \caption{The prepared input file (left) and result in wood (right) of an old internet meme}
     \label{fig:troll-print}
   \end{center}
 \end{figure}
@@ -274,6 +516,16 @@ Each numbered scale mark is one millimeter.
 One thing that would be nice is if the mapping of the image was done differently.
 This method requires lots of left and right scanning, which results in the rough, pixely edges
 and the print taking a long time to execute- about an hour for a fairly small image.
+
+An alternative design would convert the raster image into a series of lines,
+and there would be burn commands allowing a slope to be defined, so that
+sloped lines would look smooth instead of having one-pixel steps.
+Really, they would still have steps, but they would be about 50 times smaller.
+
+Another alternative would be to sort command sub-sequences into a more optimized
+route. It is a classic \say{traveling salesman} problem, which in some cases
+could allow the print to be done in a small fraction of the current time.
+
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=0.8\textwidth]{burn-zoomed}
@@ -295,7 +547,13 @@ spread too far apart.
   \end{center}
 \end{figure}
 
-\section*{Appendices}
-\subsection{Figures}
+\section*{Appendix}
+\subsection{Software}
+The microcontroller main file and the PC software source code
+are available at
+
+\texttt{https://github.com/nhedges/blue-scribe}.
+
+In order to compile the PC software, the openCV library, version 4, must be installed on the system.
 
 \end{document}
