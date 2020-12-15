@@ -152,40 +152,186 @@ translating an image file on a computer to an image etched into wood or another 
 We can follow the pipeline of information to see how it works.
 
 \subsection{PC Software}
-First, the image file on the computer is opened and read by the PC software using an open source
+First, the image file on the computer is opened and read by the PC software using OpenCV, an open source
 image processing library. The dimensions of the image are analyzed, and cropped to a smaller size
 if necessary.
 The image is converted to grayscale, and a preview is displayed to the user.
 The software then scans through each pixel on the image, and builds groups of adjacent pixels
 which have the same value. It generates a list of commands as it goes and they are queued in memory.
+Constants representing the scaling factor between pixels and motor steps is considered, as well
+as a constant for normalizing the 256 possible values in the image to a subset of the 1000 possible
+values for the laser power level.
+If there are five pixels in a row which have the value 45, the scaling factor is 50 steps
+per pixel, and the laser power multiplier is 2, then the command would be \texttt{BH 250 90}.
 The list of commands, when executed in the right order, will tell the laser engraver how to make the image.
 
 Once the user is ready, the software sends the first command, usually a \say{home} command, to the
 microcontroller through the UART serial interface.
-It waits for a response from the microcontroller, which is an indication that the command has been
+In the linux operating system, the serial device for the ST-Link UART is \texttt{/dev/ttyACM0}.
+A standard \say{termios} struct is used to set the correct UART parameters;
+\begin{itemize}
+  \item 9600 BAUD
+  \item No parity bit
+  \item 8 bits per byte
+  \item Hardware flow control disabled
+  \item Cannon mode disabled
+  \item Echo disabled
+  \item Erasure enabled
+  \item Newline echo disabled
+  \item Handling interrupt signals disabled
+  \item Disable special handling of inputs such as carriage returns and newline conversions
+  \item Timeout of 2 deciseconds
+  \item \say{VMIN} size of 100
+\end{itemize}
+
+It waits for a response from the microcontroller containing \say{A},
+which is an indication that the command has been
 carried out and the engraver is ready for a new command.
 The second command is then sent, and the process repeats until all commands have been sent and executed.
 
 \subsection{Microcontroller Software}
 The microcontroller is key for the functionality of the overall system.
 When the microcontroller (MC) is first powered on, it initializes all the necessary inputs and outputs,
-which include pins for UART, inputs for switches, an analog output with the necessary timer,
-and two output pins for each motor.
+which include pins for UART (push-pull), inputs for switches (pull up),
+an analog output with the TIM1 timer,
+and two output pins for each motor (push-pull) (Figure \ref{fig:mcwiringdiagram}).
 Additionally the sysTick timer is initialized. The overall operation of the MC is defined by some
 state variables. Once everything is ready, the state is set to idling.
 
 When data arrives through the UART interface, an interrupt is called by the hardware, and the
-input is copied into a buffer. When a carriage return is received, indicating the end of a command,
-the buffer is processed to read the name of the command and any included arguments.
+input is copied into a buffer and the device goes back to idling in most cases.
+If a carriage return is received, indicating the end of a command,
+the state is changed to \say{receiving}.
 
+In the main function, most of the time is spent in a busy wait checking if the state is \say{receiving}.
+When this is set by the UART handler,
+the buffer is processed to read the name of the command and any included arguments using sscanf.
+Functions are called based on the command and parameters.
 The state machine and parameters such as the x and y destination coordinates are set.
+In the goTo function (Figure \ref{fig:gotoFunction}), the state, xTarget, yTarget, xDirection,
+and yDirection are all set.
+goTo contains a busy wait which ends when sysTick changes the state.
+Most of the other command functions make one or more calls to goTo,
+four times in the case of \say{Square}, and preceeded and followed by
+commands to set the laser PWM in the case of burn commands.
+
+\begin{figure}[H]
+ \begin{center}
+   \begin{verbatim}
+void goTo(int posX, int posY){
+	motorTargetX = posX;
+	motorTargetY = posY;
+	if (motorTargetX > motorLocationX)
+		directionX = 0; // move away from zero
+	else
+		directionX = 1; // move towards zero
+	if (motorTargetY > motorLocationY)
+		directionY = 0; // move away from zero
+	else
+		directionY = 1; // move towards zero
+	state = moving;
+
+	while (state == moving); // wait until move is done
+
+	if (function == GO){ //send the done flag if goTo was the original function called
+		send(1);
+	}
+}
+   \end{verbatim}
+   \caption{Code snippet of the goTo function}
+   \label{fig:gotoFunction}
+ \end{center}
+\end{figure}
+
 The sysTick timer, which is always running, checks the state variables to determine what it should
-do each time. For example, if it sees that the current state is GoTo, it should compare the current
+do each time. For example, if it sees that the current state is \say{moving}, it should compare the current
 motor locations and destinations to determine if the command is complete. Otherwise it should
 determine which direction the motors need to move, and set the direction pin while toggling
 the step pin on the motors as needed.
+Always conditions are checked to determine if a command is done.
+State variables are updated to move to the next state based on the outcome.
 
-%TODO continue narrative
+In causing the stepper motor to execute a step, the \say{step} pin must be set to high.
+During a move, the sysTick will toggle through a two-state system for the rising and falling
+edge of the step pin, for each motor x and y. The motor location variable
+is only incremented or decremented
+for a given motor on the falling edge motor state.
+The end result of the step output is a square wave with a frequency half that
+of the sysTick timer frequency, which stops when the motor arrives at its target value.
+A portion of the very long sysTickHandler function is shown in Figure \ref{fig:sysTick}.
+The portion for the \say{moving} state is shown. Other states will include different content
+based on the state machine behavior. The \say{homing} state, for example, would be similar
+except the direction variables are ignored, the motors always move towards zero, and input
+pins for the homing switches are checked to determine if a motor should continue.
+
+\begin{figure}[H]
+ \begin{center}
+   \begin{verbatim}
+if (state == moving)
+	{
+		if (motorLocationX != motorTargetX) //moves the horizontal motor if it is not at its destination
+		{
+		  uint32_t motorTempX = ((directionX << 3) | (xMotorStage << 2));//Gpiob pin 2 controls the stepping of the motor and pin 3 controls direction
+			GPIOB->ODR &= ~motorMaskX;
+			GPIOB->ODR |= motorTempX; //update the GPIOB ODR
+			if (xMotorStage == falling) // we update the location on falling edge
+			{
+				if (directionX == 1) // update the motor location since we moved
+				{
+					motorLocationX--;
+				}
+				else
+				{
+					motorLocationX++;
+				}
+				
+				xMotorStage = rising; //switch the motor stage to rising
+			}
+			else
+			{
+				xMotorStage = falling; //switch the motor stage to falling
+			}
+		}
+		if (motorLocationY != motorTargetY) //moves the vertical motor if it is not at its destination
+		{
+      //Gpiob pin 6 controls the stepping of the motor and pin 7 controls direction
+		  uint32_t motorTempY = ((directionY << 7) | (yMotorStage << 6));
+			GPIOB->ODR &= ~motorMaskY;
+			GPIOB->ODR |= motorTempY; //update the GPIOB ODR
+			if (yMotorStage == falling) // we update the location on falling edge
+			{
+				if (directionY == 1) // update the motor location since we moved
+				{
+					motorLocationY--;
+				}
+				else
+				{
+					motorLocationY++;
+				}
+				yMotorStage = rising; //switch the motor stage to rising
+			}
+			else
+			{
+				yMotorStage = falling; //switch the motor stage to falling
+			}
+		}
+		if (motorLocationX == motorTargetX && motorLocationY == motorTargetY)
+		{			
+			state = sending; // change state if we are done moving.
+		}
+	}
+   \end{verbatim}
+   \caption{Code snippet of one part of the sysTickHandler function}
+   \label{fig:sysTick}
+ \end{center}
+\end{figure}
+
+The overall behavior of the state machine is visualized in Figure \ref{fig:blockdiagram}.
+It is designed so that interruptions to the sysTick process is minimized during
+movement commands because they are fairly time-critical.
+If a step is delayed for too long, there is a risk of a particular spot being exposed to the
+laser for longer than intended. For this reason sending UART characters to the device while
+it is executing a burn command should be avoided when possible.
 
  \begin{figure}[H]
    \begin{center}
@@ -195,7 +341,23 @@ the step pin on the motors as needed.
    \end{center}
  \end{figure}
 
+
+
 \subsection{Electrical Hardware}
+Figure \ref{fig:mcwiringdiagram} visualizes the electrical connections utilized for the peripherals.
+All connections are routed from pins on the Discovery board to a solderless wiring board, or breadboard.
+The breadboard holds the two motor drivers, which require a 12V input and ground pair,
+assisted by a large decoupling capacitor. A 1000$\mu$F capacitor was used in this implementation.
+Aditionally, the \say{sleep} pin of the driver modules must be pulled low, and the logic ground also
+connected to MC ground. The wires connecting the coils of the motors are connected directly to the
+drivers through the breadboard. The drivers must be tuned to output the correct ammount of current
+for the stepper motors- about 500 mA. 
+
+The contact switches are Normally Open, so when the motors reach their lower limits the switches
+are closed, pulling their designated pin low.
+
+The USART2 device is built in to the Discovery board, so it only needs to be interfaced using the
+microcontroller pins, its power requirements being already implemented.
 
 \begin{figure}[H]
 	   \begin{center}
