@@ -12,7 +12,7 @@
 \maketitle
 
 \section{Introduction}
-For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we developed code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
+For our final project in ECE 3710, we are using our microcontroller and a PC to implement a 2D laser engraver. To do this, we developed code to scan an image file and break the image down into motor and laser instructions. Following this, the PC would send these instructions serially to the microcontroller via USB. The microcontroller uses the UART to receive and parse the instructions, so they can be turned into motor and laser commands. The result is a fully functional laser engraver.
 
 \section{Scope}
 This document presents an overview and precise details of the laser engraver design,
@@ -26,7 +26,7 @@ This section covers an overview of our laser engraver design. This section will 
 Our laser engraver shall meet the following functionality requirements:
 \subsubsection*{Hardware}
 	\begin{itemize}
-		\item The laser engraver shall etch at least a 80 mm by 80 mm square.
+		\item The laser engraver shall etch at least an 80 mm by 80 mm square.
 		\item The laser and x-y actuators shall be mounted within their own secure housing.
 		\item The laser shall be securely attached to the x-y actuators.
 		\item The laser brightness shall be changed for different instruction purposes.
@@ -49,12 +49,12 @@ The following components are required to build the complete laser engraver desig
 \begin{itemize}
 	\item STM32 Discovery Board Microcontroller
 	\item PC
-	\item (2) Bipolar stepper motor ball-screw linear actuator 100mm
+	\item (2) Bipolar stepper motor ball-screw linear actuator 100 mm
 	\item (2) MP6500 bipolar stepper motor drivers
 	\item (2) Contact switches
 	\item Mini USB cable
 	\item 12V power supply
-	\item NEJE 2.5W Laser Engraver Module Head 450nm 
+	\item NEJE 2.5W Laser Engraver Module Head 450 nm 
 	\item Included laser power board
 	\item (4) Scrap plywood for laser engraver housing
 	\item (4) Aluminum angle brackets
@@ -92,8 +92,9 @@ The following are the laser engraver commands:
 \begin{itemize}
   \item Home (no parameters)
 
-    This command moves the actuators towards the top left hand corner until the homing switches
+    This command moves the actuators towards the top left-hand corner until the homing switches
     are toggled, indicating that it can go no further.
+    That location is then set as a reference point in the coordinate system as zero, zero.
 
   \item Goto (x destination, y destination)
     
@@ -159,7 +160,7 @@ image processing library. The dimensions of the image are analyzed, and cropped 
 if necessary.
 The image is converted to grayscale, and a preview is displayed to the user.
 The software then scans through each pixel on the image, and builds groups of adjacent pixels
-which have the same value. It generates a list of commands as it goes and they are queued in memory.
+which have the same value. It generates a list of commands as it goes, and they are queued in memory.
 Constants representing the scaling factor between pixels and motor steps is considered, as well
 as a constant for normalizing the 256 possible values in the image to a subset of the 1000 possible
 values for the laser power level.
@@ -197,7 +198,7 @@ When the microcontroller (MC) is first powered on, it initializes all the necess
 which include pins for UART (push-pull), inputs for switches (pull up),
 an analog output with the TIM1 timer,
 and two output pins for each motor (push-pull) (Figure \ref{fig:mcwiringdiagram}).
-Additionally the sysTick timer is initialized. The overall operation of the MC is defined by some
+Additionally, the sysTick timer is initialized. The overall operation of the MC is defined by some
 state variables. Once everything is ready, the state is set to idling.
 
 When data arrives through the UART interface, an interrupt is called by the hardware, and the
@@ -247,10 +248,10 @@ void goTo(int posX, int posY){
 
 The sysTick timer, which is always running, checks the state variables to determine what it should
 do each time. For example, if it sees that the current state is \say{moving}, it should compare the current
-motor locations and destinations to determine if the command is complete. Otherwise it should
+motor locations and destinations to determine if the command is complete. Otherwise, it should
 determine which direction the motors need to move, and set the direction pin while toggling
 the step pin on the motors as needed.
-Always conditions are checked to determine if a command is done.
+Conditions are checked each time to determine if a command is done.
 State variables are updated to move to the next state based on the outcome.
 
 In causing the stepper motor to execute a step, the \say{step} pin must be set to high.
@@ -352,8 +353,8 @@ The breadboard holds the two motor drivers, which require a 12V input and ground
 assisted by a large decoupling capacitor. A 1000$\mu$F capacitor was used in this implementation.
 Aditionally, the \say{sleep} pin of the driver modules must be pulled low, and the logic ground also
 connected to MC ground. The wires connecting the coils of the motors are connected directly to the
-drivers through the breadboard. The drivers must be tuned to output the correct ammount of current
-for the stepper motors- about 500 mA. 
+drivers through the breadboard. The drivers must be tuned to output the correct current
+for the stepper motors; about 500 mA. 
 Aditionally red LEDs were connected to the \say{fault} pins of the motor drivers and
 the 3.3V supply from the microcontroller. An over-current or over-temperature situation
 would pull the \say{fault} pins low, activating the LEDs.
@@ -380,7 +381,7 @@ stability, convenience for use, and simplicity of fabrication.
 
 The linear actuators are connected together directly using machine screws. This is unconventional
 for similar devices, however the laser us well below the weight specifications, and this helped
-minimaze the need for aditional mechanical design. Holes had to be drilled and countersunk very
+minimize the need for additional mechanical design. Holes had to be drilled and countersunk very
 precisely in the lower of the two actuators so that the directions of movement would be perpendicular,
 with all the screws and holes lining up exactly.
 
@@ -401,7 +402,7 @@ so it could be considered a pre-built sub-assembly.
 
 Once the actuators were connected to the laser, to each other, and to the frame,
 the electrical components could be installed.
-For the most part, a double sided foam adhesive tape was used to stick circuit boards
+For the most part, a double-sided foam adhesive tape was used to stick circuit boards
 to one of the side walls, facing the inside.
 This allowed wires to be run more easily to the motors and laser, while also
 providing the circuits some protection from physical damage.
@@ -435,7 +436,7 @@ The laser operates in the Class IV tier of laser radiation,
 so blue-filtering eye protection is required to prevent serious eye damage.
 
 \section{Testing}
-This section will go over the tests performed on our laser engraver to ensure it meets all of the functionality requirements. 
+This section will go over the tests performed on our laser engraver to ensure it meets the functionality requirements. 
 
 \subsection{Structure Test}
 To begin the structure test, we visually examined the structure for any building imperfections and to ensure proper functionality could be achieved. Next, we used our hands to provide pressure on multiple sides of the housing to test for building security. From there we put light pressure on the x-y linear actuators to ensure they were securely fastened. Finally, we used a ruler to measure the size of the engraving area to ensure the size was large enough. From this test, we did not notice any visual design flaws and the structure seemed to be very sturdy. The etching area was determined to be 94 mm by 94 mm in size. This test was able to verify our laser engraver could etch a minimum of an 80 mm by 80 mm area, the housing for the laser and the motors were secure, and the laser and motors themselves were securely fastened.
@@ -444,10 +445,10 @@ To begin the structure test, we visually examined the structure for any building
 This motor functionality test was performed by hard coding and running motor move commands from the microcontroller and observing the movement of the actuators afterward. We started by implementing move commands for each individual actuator to get them to move to the ends of their respective ranges. Following this, we implemented simultaneous move commands so both actuators would be moving at the same time. This test was performed to ensure the laser could be moved to any location within the etching area. We found that the actuators were able to move properly verified they could move at the same time. 
 
 \subsection{Homing Test}
-The homing test was conducted by hard coding and running move commands from the microcontroller to get the actuators to be in two non-zero locations. Next, a home command was hard coded and run to verify the laser would return to the 0,0 position. We observed that actuators went to the given location and were able to return back to the starting location via the home command. This test verified that the actuators can return to a home position with a single command.  
+The homing test was conducted by hard coding and running move commands from the microcontroller to get the actuators to be in two non-zero locations. Next, a home command was hard coded and run to verify the laser would return to the 0,0 position. We observed that actuators went to the given location and were able to return to the starting location via the home command. This test verified that the actuators can return to a home position with a single command.  
 
 \subsection{Laser PWM Test}
-The laser PWM test was performed by hard coding values into the microcontroller's timer one capture and control register to vary the PWM output for the laser. The values tested were from 99 to 999 in 100 unit increments. Once the value was loaded into the register, we would turn on the laser to observed its brightness. We observed that each value loaded into the capture and compare register adjusted the power level our laser outputted from a 90\% duty cycle down to a .1\% duty cycle. This test was able to verify our laser brightness can be changed for different instruction purposes.
+The laser PWM test was performed by hard coding values into the microcontroller's timer one capture and control register to vary the PWM output for the laser. The values tested were from 99 to 999 in 100 unit increments. Once the value was loaded into the register, we would turn on the laser to observed its brightness. We observed that each value loaded into the capture and compare register adjusted the power level our laser outputted from a 90\% duty cycle down to a 0.1\% duty cycle. This test was able to verify our laser brightness can be changed for different instruction purposes.
  
 \subsection{USB UART Communication Test}
 The USB UART communication test was performed by connecting the microcontroller to a PC via a mini USB and disconnecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTY terminal to ensure the microcontroller was receiving the commands and sending the proper response flag back to the terminal. We observed that all valid function calls were returned with the proper done flag and all invalid inputs were returned with the proper error flag. This test verified the microcontroller can communicate serially with the PC via USB and can send a done or error flag via the UART back to the PC upon instruction completion or failure.
@@ -455,7 +456,7 @@ The USB UART communication test was performed by connecting the microcontroller 
 \subsection{Image Instruction Breakdown Test}
 The image instruction breakdown test was performed by configuring the software to print out
 generated commands to the terminal. We observed test images could be loaded and when compared to the output of the program saw they were being
-analyzed in a reasonable way. Figure \ref{fig:test-images} shows some example images that were used. This test verified the PC software can process image files to determine the necessary laser commands to create an image similar to that found in the image file.
+analyzed correctly. Figure \ref{fig:test-images} shows some example images that were used. This test verified the PC software can process image files to determine the necessary laser commands to create an image similar to that found in the image file.
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=0.4\textwidth]{test3}
@@ -519,10 +520,10 @@ and the print taking a long time to execute- about an hour for a fairly small im
 An alternative design would convert the raster image into a series of lines,
 and there would be burn commands allowing a slope to be defined, so that
 sloped lines would look smooth instead of having one-pixel steps.
-Really, they would still have steps but they would be about 50 times smaller.
+Really, they would still have steps, but they would be about 50 times smaller.
 
 Another alternative would be to sort command sub-sequences into a more optimized
-route. It is a classic \say{travelling salesman} problem, which in some cases
+route. It is a classic \say{traveling salesman} problem, which in some cases
 could allow the print to be done in a small fraction of the current time.
 
 \begin{figure}[H]
