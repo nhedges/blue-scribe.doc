@@ -419,10 +419,15 @@ Test images were used first to verify that the image was consistently generated.
 
 \section{Conclusion}
 The project overall was a success. There were some problems early on getting the actuators to work because we realized it was impossible to use the motor driver that came in our lab kits.
-The x-y actuators were bipolar motors instead of unipolar motors, so they had no fifth wire or center tap to the coils. We ended up having to buy two bipolar stepper motor drivers to get the actuators working and that turned out successful.
+The x-y actuators' bipolar motors had no fifth wire or center tap to the coils.
+The drivers we already had could pull a wire low and sink current, but not drive current.
+This allowed us to only allow current in one direction through the coils.
+We ended up having to buy two bipolar stepper motor drivers to get the actuators working and that turned out successfully.
 
 Constructing the mechanical aspects of the device was more tedious than we had imagined,
 but with some help and lots of time the chassis design was also realized. 
+It may be noted that some outside help was utilized in constructing the chassis,
+as it required some skill with access to power tools.
 
 Collaborating remotely most of the time proved a challenge, but the use of git software allowed
 relatively fast review and versioning of the code.
@@ -434,7 +439,7 @@ The images seem to turn out OK. An example is shown in Figure \ref{fig:troll-pri
   \begin{center}
     \includegraphics[width=0.4\textwidth]{trollface-edges}
     \includegraphics[width=0.4\textwidth]{trollface-result}
-    \caption{The prepared input file and result in wood of an old internet meme}
+    \caption{The prepared input file (left) and result in wood (right) of an old internet meme}
     \label{fig:troll-print}
   \end{center}
 \end{figure}
@@ -445,6 +450,16 @@ Each numbered scale mark is one millimeter.
 One thing that would be nice is if the mapping of the image was done differently.
 This method requires lots of left and right scanning, which results in the rough, pixely edges
 and the print taking a long time to execute- about an hour for a fairly small image.
+
+An alternative design would convert the raster image into a series of lines,
+and there would be burn commands allowing a slope to be defined, so that
+sloped lines would look smooth instead of having one-pixel steps.
+Really, they would still have steps but they would be about 50 times smaller.
+
+Another alternative would be to sort command sub-sequences into a more optimized
+route. It is a classic \say{travelling salesman} problem, which in some cases
+could allow the print to be done in a small fraction of the current time.
+
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=0.8\textwidth]{burn-zoomed}
@@ -466,7 +481,13 @@ spread too far apart.
   \end{center}
 \end{figure}
 
-\section*{Appendices}
-\subsection{Figures}
+\section*{Appendix}
+\subsection{Software}
+The microcontroller main file and the PC software source code
+are available at
+
+\texttt{https://github.com/nhedges/blue-scribe}.
+
+In order to compile the PC software, the openCV library, version 4, must be installed on the system.
 
 \end{document}
