@@ -45,8 +45,9 @@ Our laser engraver shall meet the following functionality requirements:
 
 \subsection{Dependencies}
 The following components are required to build the complete laser engraver design:
+\subsubsection*{Hardware}
 \begin{itemize}
-	\item STM32 Microcontroller
+	\item STM32 Discovery Board Microcontroller
 	\item PC
 	\item (2) X-Y linear actuators
 	\item (2) MP6500 bipolar stepper motor drivers
@@ -62,7 +63,15 @@ The following components are required to build the complete laser engraver desig
 	\item (2) 2.2 kOhm resistors
 	\item (2) Red LEDs
 	\item Jumper wires as required
-	\end{itemize}
+\end{itemize}
+
+\subsubsection*{Software}
+\begin{itemize}
+  \item Keil 5 IDE
+  \item STM32 startup code
+  \item \texttt{stdio.h} standard library
+  \item Linux operating system for PC
+\end{itemize}
 
 \subsection{Theory of Operation}
 The laser engraver operates on a number of principles to meet the end goal of
