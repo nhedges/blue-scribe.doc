@@ -18,10 +18,10 @@ For our final project in ECE 3710, we are using our microcontroller and a PC to 
 This document presents an overview and precise details of the laser engraver design,
 as well as the methods and results of functional tests.
 This document focuses primarily on microcontroller and software topics,
-omitting some details in electrical and mechanical design to save space.
+but does cover some details of the electrical and mechanical design.
 
 \section{Design Overview}
-This section covers an overview of our laser engraver design. This section will discuss the required functionality, the required components for building, the theory of operation, and the potential design alternatives. 
+This section covers an overview of our laser engraver design. This section will discuss the required functionality, the required components for building, the theory of operation, and the potential design alternatives of our laser engraver.
 \subsection{Requirements}
 Our laser engraver shall meet the following functionality requirements:
 \subsubsection*{Hardware}
@@ -156,11 +156,11 @@ We can follow the pipeline of information to see how it works.
 
 \subsection{PC Software}
 First, the image file on the computer is opened and read by the PC software using OpenCV, an open source
-image processing library. The dimensions of the image are analyzed, and cropped to a smaller size
+image processing library. The dimensions of the image are analyzed and cropped to a smaller size
 if necessary.
-The image is converted to grayscale, and a preview is displayed to the user.
-The software then scans through each pixel on the image, and builds groups of adjacent pixels
-which have the same value. It generates a list of commands as it goes, and they are queued in memory.
+The image is converted to gray scale, and a preview is displayed to the user.
+The software then scans through each pixel on the image and builds groups of adjacent pixels
+which have the same value. It generates a list of commands as it goes and queues them in memory.
 Constants representing the scaling factor between pixels and motor steps is considered, as well
 as a constant for normalizing the 256 possible values in the image to a subset of the 1000 possible
 values for the laser power level.
@@ -215,7 +215,7 @@ In the goTo function (Figure \ref{fig:gotoFunction}), the state, xTarget, yTarge
 and yDirection are all set.
 goTo contains a busy wait which ends when sysTick changes the state.
 Most of the other command functions make one or more calls to goTo,
-four times in the case of \say{Square}, and preceeded and followed by
+four times in the case of \say{Square}, and are preceded and followed by
 commands to set the laser PWM in the case of burn commands.
 
 \begin{figure}[H]
@@ -249,7 +249,7 @@ void goTo(int posX, int posY){
 The sysTick timer, which is always running, checks the state variables to determine what it should
 do each time. For example, if it sees that the current state is \say{moving}, it should compare the current
 motor locations and destinations to determine if the command is complete. Otherwise, it should
-determine which direction the motors need to move, and set the direction pin while toggling
+determine which direction the motors need to move and set the direction pin while toggling
 the step pin on the motors as needed.
 Conditions are checked each time to determine if a command is done.
 State variables are updated to move to the next state based on the outcome.
@@ -261,7 +261,7 @@ is only incremented or decremented
 for a given motor on the falling edge motor state.
 The end result of the step output is a square wave with a frequency half that
 of the sysTick timer frequency, which stops when the motor arrives at its target value.
-A portion of the very long sysTickHandler function is shown in Figure \ref{fig:sysTick}.
+A portion of the sysTickHandler function is shown in Figure \ref{fig:sysTick}.
 The portion for the \say{moving} state is shown. Other states will include different content
 based on the state machine behavior. The \say{homing} state, for example, would be similar
 except the direction variables are ignored, the motors always move towards zero, and input
@@ -351,11 +351,11 @@ Figure \ref{fig:mcwiringdiagram} visualizes the electrical connections utilized 
 All connections are routed from pins on the Discovery board to a solderless wiring board, or breadboard.
 The breadboard holds the two motor drivers, which require a 12V input and ground pair,
 assisted by a large decoupling capacitor. A 1000$\mu$F capacitor was used in this implementation.
-Aditionally, the \say{sleep} pin of the driver modules must be pulled low, and the logic ground also
+Additionally, the \say{sleep} pin of the driver modules must be pulled low, and the logic ground must be
 connected to MC ground. The wires connecting the coils of the motors are connected directly to the
 drivers through the breadboard. The drivers must be tuned to output the correct current
 for the stepper motors; about 500 mA. 
-Aditionally red LEDs were connected to the \say{fault} pins of the motor drivers and
+Additionally red LEDs were connected to the \say{fault} pins of the motor drivers and
 the 3.3V supply from the microcontroller. An over-current or over-temperature situation
 would pull the \say{fault} pins low, activating the LEDs.
 
@@ -375,39 +375,39 @@ microcontroller pins, its power requirements being already implemented.
 
 \subsection{Mechanical and Wiring}
 
-The chassis design had a few goals in mind, including the ability to hold all circuit boards,
+The chassis design had a few goals in mind, including: the ability to hold all circuit boards,
 ability to mount the laser in such a way as to allow x-y actuation,
-stability, convenience for use, and simplicity of fabrication.
+working stability, convenience of use, and simplicity of fabrication.
 
 The linear actuators are connected together directly using machine screws. This is unconventional
-for similar devices, however the laser us well below the weight specifications, and this helped
+for similar devices, however the laser was well below the weight maximum for the actuators. This helped
 minimize the need for additional mechanical design. Holes had to be drilled and countersunk very
 precisely in the lower of the two actuators so that the directions of movement would be perpendicular,
 with all the screws and holes lining up exactly.
 
-A bracket was made by cutting, drilling, and bending some aluminum angle bracket, to allow the
-laser to be connected to the lower actuator, while still allowing some room for the air intake fan.
+A bracket was made by cutting, drilling, and bending some aluminum angle bracket to allow the
+laser to be connected to the lower actuator. Some room was left for the air intake fan.
 Again, the holes needed to line up in order for the machine screws to fasten the parts together.
 
-The top actuator is fastened to ply wood using wood screws. The top piece is in turn connected
+The top actuator is fastened to the ply wood using wood screws. The top piece is in turn connected
 to the side wall boards, and those in turn to the base.
 The base has a square hole in the middle, allowing the laser to shine through and be focused
 flush to the bottom surface, allowing large objects to be etched.
 
-The wood frame is a part in which some collaboration
-was utilized for design and fabrication
+The wood frame required some collaboration
+for design and fabrication
 with someone who has woodworking skills.
 Therefore, the wood frame is not strictly our design,
 so it could be considered a pre-built sub-assembly.
 
 Once the actuators were connected to the laser, to each other, and to the frame,
 the electrical components could be installed.
-For the most part, a double-sided foam adhesive tape was used to stick circuit boards
+Double-sided foam adhesive tape was used to stick circuit boards
 to one of the side walls, facing the inside.
 This allowed wires to be run more easily to the motors and laser, while also
 providing the circuits some protection from physical damage.
 
-The homing switches were likewise secured to the motors in such a way as to
+The homing switches were secured to the motors in such a way as to
 make contact with the other actuator or laser engraver bracket when the actuator
 approaches the lower limit of its range.
 
