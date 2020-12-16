@@ -170,7 +170,7 @@ The list of commands, when executed in the right order, will tell the laser engr
 
 Once the user is ready, the software sends the first command, usually a \say{home} command, to the
 microcontroller through the UART serial interface.
-In the linux operating system, the serial device for the ST-Link UART is \texttt{/dev/ttyACM0}.
+In the Linux operating system, the serial device for the ST-Link UART is \texttt{/dev/ttyACM0}.
 A standard \say{termios} struct is used to set the correct UART parameters;
 \begin{itemize}
   \item 9600 BAUD
@@ -467,7 +467,7 @@ analyzed correctly. Figure \ref{fig:test-images} shows some example images that 
 \end{figure}
 
 \subsection{Manual Instruction Input Test}
-The manual instruction input test was performed by connecting the microcontroller to a PC via a mini USB and connecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTy terminal to ensure the microcontroller was receiving the commands and implementing the function calls correctly. We sent the following instructions: GO 5000, 5000; HM; GO 1000, 1000; BH 1000, 500; BV 1000, 500; GO 2000, 2000; SQ 1000, 500; and HM. We observed the actuators and the laser working as expected for each function call and also observed the done flag being sent back to the terminal on each successful instruction completion. This test verified the microcontroller can receive instructions manually through a terminal on the PC.
+The manual instruction input test was performed by connecting the microcontroller to a PC via a mini USB and connecting the laser and both actuators pins. Once connected, the PC sent commands serially to the microcontroller via a PuTTY terminal to ensure the microcontroller was receiving the commands and implementing the function calls correctly. We sent the following instructions: GO 5000, 5000; HM; GO 1000, 1000; BH 1000, 500; BV 1000, 500; GO 2000, 2000; SQ 1000, 500; and HM. We observed the actuators and the laser working as expected for each function call and also observed the done flag being sent back to the terminal on each successful instruction completion. This test verified the microcontroller can receive instructions manually through a terminal on the PC.
 
 \subsection{Computer Generated Input Test}
 The manual computer generated input test was performed with
@@ -487,26 +487,32 @@ Test images were used first to verify that the image was consistently generated.
 The project overall was a success. There were some problems early on getting the actuators to work because we realized it was impossible to use the motor driver that came in our lab kits.
 The x-y actuators' bipolar motors had no fifth wire or center tap to the coils.
 The drivers we already had could pull a wire low and sink current, but not drive current.
-This allowed us to only allow current in one direction through the coils.
-We ended up having to buy two bipolar stepper motor drivers to get the actuators working and that turned out successfully.
+This allowed us to only drive current in one direction through the coils.
+We purchased two bipolar stepper motor drivers to get the actuators working.
+Changes had to be made to the microcontroller software, but the drivers allowed the
+actuators to work properly.
+One lesson learned is to check as much as possible to ensure components will be compatible
+before ordering parts. Things like this can introduce unexpected costs and delays.
 
 Constructing the mechanical aspects of the device was more tedious than we had imagined,
-but with some help and lots of time the chassis design was also realized. 
-It may be noted that some outside help was utilized in constructing the chassis,
-as it required some skill with access to power tools.
+but with some experienced help and lots of time the chassis design was also realized. 
 
 Collaborating remotely most of the time proved a challenge, but the use of git software allowed
 relatively fast review and versioning of the code.
+It helped us to coordinate our changes to prevent duplicated work
+and make clear some of the more fine details of the implementation.
 
-The end result is fairly impressive; a fully functioning system which meets all the requirements
-and etches an image into wood or other materials.
-The images seem to turn out OK. An example is shown in Figure \ref{fig:troll-print}.
+Once all the components were operational, we could commence some high level testing.
+A slight discrepancy was noticed in some instances, which were corrected in software.
+In Figure \ref{fig:off-by-one} there can be seen a case where the burns would alternate
+locations slightly when the direction was changed (left), and a case where the pixels were
+spread too far apart (right).
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{trollface-edges}
-    \includegraphics[width=0.4\textwidth]{trollface-result}
-    \caption{The prepared input file (left) and result in wood (right) of an old internet meme}
-    \label{fig:troll-print}
+    \includegraphics[width=0.4\textwidth]{test4}
+    \includegraphics[width=0.4\textwidth]{burn-errors}
+    \caption{The prepared input file (left) and some erroneous outputs (right)}
+    \label{fig:off-by-one}
   \end{center}
 \end{figure}
 
@@ -514,8 +520,9 @@ In Figure \ref{fig:burn-zoomed} we can see the way that the individual cuts were
 create the image.
 Each numbered scale mark is one millimeter.
 One thing that would be nice is if the mapping of the image was done differently.
-This method requires lots of left and right scanning, which results in the rough, pixely edges
-and the print taking a long time to execute- about an hour for a fairly small image.
+This method requires lots of left and right scanning, which takes lots of time.
+The raster method also results in the rough, pixely edges
+because of how far apart the rows must be spaced to not overlap.
 
 An alternative design would convert the raster image into a series of lines,
 and there would be burn commands allowing a slope to be defined, so that
@@ -534,26 +541,34 @@ could allow the print to be done in a small fraction of the current time.
   \end{center}
 \end{figure}
 
-A slight discrepancy was noticed in some instances, which were corrected in software.
-In Figure \ref{fig:off-by-one} there can be seen a case where the burns would alternate
-locations slightly when the direction was changed, and a case where the pixels were
-spread too far apart.
+Other features that would be nice and may be implemented in the future include
+support for pausing the burn process,
+a physical switch for 12V power,
+laser temperature monitoring,
+a guide for selecting laser power settings based on material,
+a more user-friendly computer interface,
+and software methods for printing on a curved surface.
+
+The end result is fairly impressive; a fully functioning system which meets all the requirements
+and etches an image into wood or other materials.
+The images seem to turn out OK, closely resembling the input file provided.
+An example is shown in Figure \ref{fig:troll-print}.
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{test4}
-    \includegraphics[width=0.4\textwidth]{burn-errors}
-    \caption{The prepared input file and some erroneous outputs}
-    \label{fig:off-by-one}
+    \includegraphics[width=0.4\textwidth]{trollface-edges}
+    \includegraphics[width=0.4\textwidth]{trollface-result}
+    \caption{The prepared input file (left) and result in wood (right) of an old internet meme}
+    \label{fig:troll-print}
   \end{center}
 \end{figure}
 
+
+
 \section*{Appendix}
-\subsection{Software}
-The microcontroller main file and the PC software source code
+\subsection*{Software}
+The microcontroller main code and the PC software source code
 are available at
 
 \texttt{https://github.com/nhedges/blue-scribe}.
-
-In order to compile the PC software, the openCV library, version 4, must be installed on the system.
 
 \end{document}
